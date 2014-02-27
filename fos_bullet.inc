@@ -1,4 +1,5 @@
 {$mode objfpc}{$H+}
+{.$modeswitch advancedrecords}
 
 {$MACRO ON}
 {.$STACKFRAMES OFF} // Ommit StackFrames

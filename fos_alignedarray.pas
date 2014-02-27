@@ -521,6 +521,7 @@ begin
   end else begin
     if n>cap then begin
       data:=ReAllocMem(data,integer(n)*pad_len);
+      writeln(n*pad_len,' ',ptruint(data));
       cap:=n;
     end;
   end;

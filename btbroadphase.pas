@@ -291,6 +291,7 @@ type
        procedure   updateSubtreeHeaders                          (const leftChildNodexIndex,rightChildNodexIndex : Integer);
     public
        constructor create;
+       destructor destroy; override;
         ///***************************************** expert/internal use only *************************
        procedure   setQuantizationValues (const bvhAabbMin,bvhAabbMax:btVector3;const quantizationMargin:btScalar=1);
        function    getLeafNodeArray      :btQuantizedNodeArray;
@@ -807,7 +808,7 @@ function btQuantizedBvh.getAabbMin(const nodeIndex: integer): btVector3;
 begin
   if m_useQuantization then begin
     Result := unQuantize(@m_quantizedLeafNodes.A[nodeIndex]^.m_quantizedAabbMin[0]);
-  end;
+  end else
   //non-quantized
   result := m_leafNodes.A[nodeIndex]^.m_aabbMinOrg;
 end;
@@ -816,7 +817,7 @@ function btQuantizedBvh.getAabbMax(const nodeIndex: integer): btVector3;
 begin
   if m_useQuantization then begin
     Result := unQuantize(@m_quantizedLeafNodes.A[nodeIndex]^.m_quantizedAabbMax[0]);
-  end;
+  end else
   //non-quantized
   result := m_leafNodes.A[nodeIndex]^.m_aabbMaxOrg;
 end;
@@ -1409,8 +1410,22 @@ begin
   m_traversalMode   := TRAVERSAL_STACKLESS;
   //m_traversalMode(TRAVERSAL_RECURSIVE)
   m_subtreeHeaderCount := 0; //PCK: add this line
+  m_leafNodes                := btNodeArray.create;
+  m_contiguousNodes          := btNodeArray.create;
+  m_quantizedLeafNodes       := btQuantizedNodeArray.create;
+  m_quantizedContiguousNodes := btQuantizedNodeArray.create;
+  m_SubtreeHeaders           := btBvhSubtreeInfoArray.create;
   m_bvhAabbMin.InitSame(-SIMD_INFINITY);
   m_bvhAabbMax.InitSame(SIMD_INFINITY);
+end;
+
+destructor btQuantizedBvh.destroy;
+begin
+  m_leafNodes.free;
+  m_contiguousNodes.free;
+  m_quantizedLeafNodes.free;
+  m_quantizedContiguousNodes.free;
+  m_SubtreeHeaders.free;
 end;
 
 procedure btQuantizedBvh.setQuantizationValues(const bvhAabbMin, bvhAabbMax: btVector3; const quantizationMargin: btScalar);
@@ -1475,6 +1490,7 @@ var quantizedQueryAabbMin,quantizedQueryAabbMax :array [0..2] of WORD;
     rootNode:^btQuantizedBvhNode;
 begin
   //either choose recursive traversal (walkTree) or stackless (walkStacklessTree)
+
   if m_useQuantization then begin
     ///quantize query AABB
     quantizeWithClamp(quantizedQueryAabbMin,aabbMin,false);
@@ -3971,4 +3987,4 @@ begin
 end;
 
 end.
-
+

@@ -301,7 +301,7 @@ type
       procedure setScaling(const scaling:btVector3);
     end;
 
-    btIndexedMesh=record
+    btIndexedMesh=object //record
       m_numTriangles        : integer;
       m_triangleIndexBase   : Pointer;
       m_triangleIndexStride : integer;
@@ -310,6 +310,7 @@ type
       m_vertexStride        : Integer;
       m_indexType           : PHY_ScalarType;
       m_vertexType          : PHY_ScalarType;
+      procedure Init;
     end;
 
     PbtIndexedMesh=^btIndexedMesh;
@@ -920,6 +921,7 @@ type
     public
       m_weldingThreshold                   : btScalar;
       constructor Create                   (const use32bitIndices:boolean=true;const use4componentVertices:boolean=true);
+      destructor Destroy; override;
       function    getUse32bitIndices       : boolean;
       function    getUse4componentVertices : Boolean;
       ///By default addTriangle won't search for duplicate vertices, because the search is very slow for large triangle meshes.
@@ -930,6 +932,7 @@ type
       function    findOrAddVertex          (const vertex:btVector3;const removeDuplicateVertices:boolean):integer;
       ///addIndex is an internal method, use addTriangle instead
       procedure   addIndex                 (const index:integer);
+      procedure ShowDebugInfo;
     end;
 
     ///The btTriangleMeshShape is an internal concave triangle mesh interface. Don't use this class directly, use btBvhTriangleMeshShape instead.
@@ -1221,6 +1224,7 @@ begin
   m_scaling.InitSame(1);
 end;
 
+var derp: Integer = 0;
 {$HINTS OFF}
 procedure btStridingMeshInterface.InternalProcessAllTriangles(const callback: btInternalTriangleIndexCallback; const aabbMin,aabbMax: btVector3);
 var numtotalphysicsverts,part,graphicssubparts,indexstride,stride,numverts,numtriangles,gfxindex:integer;
@@ -1233,12 +1237,15 @@ var numtotalphysicsverts,part,graphicssubparts,indexstride,stride,numverts,numtr
     var tri_indices:PCardinal;
         graphicsbase :PSingle;
     begin
-      tri_indices  := PCardinal(indexbase)+gfxindex*indexstride;
-      graphicsbase := PSingle  (vertexbase)+tri_indices[0]*stride;
+      tri_indices  := PCardinal(nativeInt(indexbase)+gfxindex*indexstride);
+      graphicsbase := PSingle(nativeInt(vertexbase)+tri_indices[0]*stride);
+      inc(derp);
+      if derp=567 then
+      asm nop end;
       triangle[0].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
-      graphicsbase := PSingle  (vertexbase)+tri_indices[1]*stride;
+      graphicsbase := PSingle(nativeint(vertexbase)+tri_indices[1]*stride);
       triangle[1].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
-      graphicsbase := PSingle  (vertexbase)+tri_indices[2]*stride;
+      graphicsbase := PSingle(nativeint(vertexbase+tri_indices[2]*stride));
       triangle[2].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
       callback.internalProcessTriangleIndex(triangle,part,gfxindex);
     end;
@@ -1261,7 +1268,7 @@ var numtotalphysicsverts,part,graphicssubparts,indexstride,stride,numverts,numtr
     var tri_indices:PCardinal;
         graphicsbase:PDouble;
     begin
-      tri_indices  := PCardinal(indexbase)+gfxindex*indexstride;
+      tri_indices  := PCardinal(nativeInt(indexbase)+gfxindex*indexstride);
       graphicsbase := PDouble  (vertexbase)+tri_indices[0]*stride;
       triangle[0].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
       graphicsbase := PDouble  (vertexbase)+tri_indices[1]*stride;
@@ -1291,6 +1298,8 @@ begin
   ///if the number of parts is big, the performance might drop due to the innerloop switch on indextype
   for part:=0 to graphicssubparts-1 do begin
   	getLockedReadOnlyVertexIndexBase(vertexbase,numverts,typ,stride,indexbase,indexstride,numtriangles,gfxindextype,part);
+    writeln(ptruint(vertexbase));
+  	writeln(ptruint(indexbase));
   	numtotalphysicsverts+=numtriangles*3; //upper bound
   	///unlike that developers want to pass in double-precision meshes in single-precision Bullet build
   	///so disable this feature by default
@@ -1420,6 +1429,14 @@ begin
   m_scaling:=scaling;
 end;
 
+{ }
+
+procedure btIndexedMesh.Init;
+begin
+ m_indexType           := PHY_INTEGER;
+ m_vertexType          := {$ifdef BT_USE_DOUBLE_PRECISION}PHY_DOUBLE{$else}PHY_FLOAT{$endif};
+end;
+
 { btTriangleIndexVertexArray }
 
 constructor btTriangleIndexVertexArray.Create(const numTriangles: Integer;
@@ -1450,7 +1467,7 @@ var idx:integer;
 begin
   idx:=m_indexedMeshes.push_back(mesh);
   m_indexedMeshes.A[idx]^.m_indexType:=indexType;
-  m_indexedMeshes.A[idx]^.m_vertexType:=PHY_FLOAT;
+  m_indexedMeshes.A[idx]^.m_vertexType:={$ifdef BT_USE_DOUBLE_PRECISION}PHY_DOUBLE{$else}PHY_FLOAT{$endif};
 end;
 
 procedure btTriangleIndexVertexArray.getLockedVertexIndexBase(
@@ -3490,12 +3507,22 @@ end;
 constructor btTriangleMesh.Create(const use32bitIndices: boolean; const use4componentVertices: boolean);
 var meshIndex : btIndexedMesh;
 begin
+//  inherited Create;
+
+  m_indexedMeshes := btIndexedMeshArray.create;
+
+  m_4componentVertices := btFOSAlignedVectorArray.Create;
+  m_3componentVertices := btFOSAlignedScalars.Create;
+  m_32bitIndices := TFOS_AlignedCardinals.Create;
+  m_16bitIndices := TFOS_AlignedWords.Create;
+
   m_use32bitIndices               := use32bitIndices;
   m_use4componentVertices         := use4componentVertices;
   m_weldingThreshold              := 0;
   meshIndex.m_numTriangles        := 0;
   meshIndex.m_numVertices         := 0;
   meshIndex.m_indexType           := PHY_INTEGER;
+  meshIndex.m_vertexType          := {$ifdef BT_USE_DOUBLE_PRECISION}PHY_DOUBLE{$else}PHY_FLOAT{$endif};
   meshIndex.m_triangleIndexBase   := nil;
   meshIndex.m_triangleIndexStride := 3*sizeof(Integer);
   meshIndex.m_vertexBase          := nil;
@@ -3511,17 +3538,28 @@ begin
     m_indexedMeshes.A[0]^.m_numTriangles        := m_16bitIndices.Length div 3;
     m_indexedMeshes.A[0]^.m_triangleIndexBase   := nil;
     m_indexedMeshes.A[0]^.m_indexType           := PHY_SHORT;
-    m_indexedMeshes.A[0]^ .m_triangleIndexStride := 3*sizeof(Word);
+    m_indexedMeshes.A[0]^.m_triangleIndexStride := 3*sizeof(Word);
   end;
   if (m_use4componentVertices) then begin
     m_indexedMeshes.A[0]^.m_numVertices         := m_4componentVertices.Length;
     m_indexedMeshes.A[0]^.m_vertexBase          := nil;
     m_indexedMeshes.A[0]^.m_vertexStride        := sizeof(btVector3);
-  end  else begin
+    m_indexedMeshes.A[0]^.m_vertexType          := {$ifdef BT_USE_DOUBLE_PRECISION}PHY_DOUBLE{$else}PHY_FLOAT{$endif};
+  end else begin
     m_indexedMeshes.A[0]^.m_numVertices         := m_3componentVertices.Length div 3;
     m_indexedMeshes.A[0]^.m_vertexBase          := nil;
     m_indexedMeshes.A[0]^.m_vertexStride        := 3*sizeof(btScalar);
+    m_indexedMeshes.A[0]^.m_vertexType          := {$ifdef BT_USE_DOUBLE_PRECISION}PHY_DOUBLE{$else}PHY_FLOAT{$endif};
   end;
+end;
+
+destructor btTriangleMesh.Destroy;
+begin
+ FreeAndNil(m_4componentVertices);
+ FreeAndNil(m_3componentVertices);
+ FreeAndNil(m_32bitIndices);
+ FreeAndNil(m_16bitIndices);
+ inherited Destroy;
 end;
 
 function btTriangleMesh.getUse32bitIndices: boolean;
@@ -3599,6 +3637,16 @@ begin
     m_16bitIndices.push_back(index);
     m_indexedMeshes.A[0]^.m_triangleIndexBase :=  m_16bitIndices.A[0];
   end;
+end;
+
+procedure btTriangleMesh.ShowDebugInfo;
+begin
+{ writeln(m_4componentVertices.Length);
+ writeln(m_4componentVertices.Capacity);
+ writeln(m_32bitIndices.Length);
+ writeln(m_32bitIndices.Capacity);}
+ writeln(ptruint(m_4componentVertices.A[0]));
+ writeln(ptruint(m_32bitIndices.A[0]));
 end;
 
 { btTriangleMeshShape }
@@ -3691,8 +3739,18 @@ begin
 end;
 
 procedure btTriangleMeshShape.recalcLocalAabb;
+var i:longint;
+    vec,tmp:btVector3;
 begin
-
+ for i:=0 to 3 do begin
+  vec.Init(0.0,0.0,0.0);
+  vec[i]:=1.0;
+  tmp:=localGetSupportingVertex(vec);
+  m_localAabbMax[i]:=tmp[i]+m_collisionMargin;
+  vec[i]:=-1.0;
+  tmp:=localGetSupportingVertex(vec);
+  m_localAabbMin[i]:=tmp[i]-m_collisionMargin;
+ end;
 end;
 
 procedure btTriangleMeshShape.getAabb(const t: btTransform; out aabbMin, aabbMax: btVector3);
@@ -3960,8 +4018,8 @@ begin
   //PCK: update the copy of the size
   m_subtreeHeaderCount := m_SubtreeHeaders.Length;
   //PCK: clear m_quantizedLeafNodes and m_leafNodes, they are temporary
-  m_quantizedLeafNodes.Free;
-  m_leafNodes.Free;
+  m_quantizedLeafNodes.Clear;
+  m_leafNodes.Clear;
 end;
 
 procedure btOptimizedBvh.refit(const triangles: btStridingMeshInterface; const AabbMin, AabbMax: btVector3);
@@ -4056,11 +4114,11 @@ begin
         curNodeSubPart := nodeSubPart;
         btAssert((indicestype=PHY_INTEGER) OR (indicestype=PHY_SHORT));
       end;
-      gfxbase := PCardinal(indexbase)+(nodeTriangleIndex*indexstride);
+      gfxbase := PCardinal(nativeInt(indexbase)+(nodeTriangleIndex*indexstride));
       for j:=2 downto 0 do begin
         graphicsindex := btDecide(indicestype=PHY_SHORT , PWord(gfxbase)[j] , gfxbase[j]);
         if (typ = PHY_FLOAT) then begin
-          graphicsbase_s   := PSingle(vertexbase)+graphicsindex*stride;
+          graphicsbase_s   := PSingle(nativeint(vertexbase)+graphicsindex*stride);
           triangleVerts[j] := btVector3.inits(graphicsbase_s[0]*meshScaling^.getX,graphicsbase_s[1]*meshScaling^.getY,graphicsbase_s[2]*meshScaling^.getZ);
         end else begin
           graphicsbase_d   := PDouble(vertexbase)+graphicsindex*stride;
@@ -4222,7 +4280,7 @@ var  m_triangle : array [0..2] of btVector3;
    procedure _Float;FOS_INLINE;
    var graphicsbase:PSingle;
    begin
-     graphicsbase  := PSingle(vertexbase)+graphicsindex*stride;
+     graphicsbase  := PSingle(nativeint(vertexbase)+graphicsindex*stride);
      m_triangle[j] := btVector3.InitS(graphicsbase[0]*meshScaling^._X^,graphicsbase[1]*meshScaling^._Y^,graphicsbase[2]*meshScaling^._Z^);
    end;
    procedure _Double;FOS_INLINE;
@@ -4234,7 +4292,7 @@ var  m_triangle : array [0..2] of btVector3;
 
 begin
   m_meshInterface.getLockedReadOnlyVertexIndexBase(vertexbase,numverts,typ,stride,indexbase,indexstride,numfaces,indicestyp,nodeSubPart);
-  gfxbase := PCardinal(indexbase)+(nodeTriangleIndex*indexstride);
+  gfxbase := PCardinal(nativeInt(indexbase)+(nodeTriangleIndex*indexstride));
   btAssert((indicestyp=PHY_INTEGER) or (indicestyp=PHY_SHORT));
   meshScaling := m_meshInterface.getScalingP;
   for j:= 2 downto 0 do begin
@@ -4285,9 +4343,13 @@ begin
     //brute force traverse all triangles
     inherited processAllTriangles(callback,aabbMin,aabbMax);
   {$else}
-  myNodeCallback := TMyNodeOverlapCallback.Create(callback,m_meshInterface);
-  m_bvh.reportAabbOverlappingNodex(myNodeCallback,aabbMin,aabbMax);
-  myNodeCallback.free;
+  if assigned(m_bvh) then begin
+    myNodeCallback := TMyNodeOverlapCallback.Create(callback,m_meshInterface);
+    m_bvh.reportAabbOverlappingNodex(myNodeCallback,aabbMin,aabbMax);
+    myNodeCallback.free;
+  end else begin
+    inherited processAllTriangles(callback,aabbMin,aabbMax);
+  end;
   {$endif}
 end;
 
@@ -5641,4 +5703,4 @@ end;
 initialization
 
 end.
-
+
