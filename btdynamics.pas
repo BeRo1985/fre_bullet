@@ -298,7 +298,8 @@ type
     m_additionalLinearDampingThresholdSqr  : btScalar;
     m_additionalAngularDampingThresholdSqr : btScalar;
     m_additionalAngularDampingFactor       : btScalar;
-    procedure Init(const mass : btScalar; const  motionState : btMotionState ; const collisionShape:btCollisionShape ; const localInertia : btVector3); //default localInertia = cbtNullVector
+    function InitS(const mass : btScalar; const  motionState : btMotionState ; const collisionShape:btCollisionShape ; const localInertia : btVector3):btRigidBodyConstructionInfo; //default localInertia = cbtNullVector
+    function Init(const mass : btScalar; const  motionState : btMotionState ; const collisionShape:btCollisionShape ; const localInertia : btVector3):btRigidBodyConstructionInfo; //default localInertia = cbtNullVector
   end;
 
 
@@ -1018,7 +1019,12 @@ end;
 
 { btRigidBodyConstructionInfo }
 
-procedure btRigidBodyConstructionInfo.Init(const mass: btScalar; const motionState: btMotionState; const collisionShape: btCollisionShape; const localInertia: btVector3);
+function btRigidBodyConstructionInfo.InitS(const mass: btScalar; const motionState: btMotionState; const collisionShape: btCollisionShape; const localInertia: btVector3):btRigidBodyConstructionInfo;
+begin
+  result.Init(mass, motionState, collisionShape, localInertia);
+end;
+
+function btRigidBodyConstructionInfo.Init(const mass: btScalar; const motionState: btMotionState; const collisionShape: btCollisionShape; const localInertia: btVector3):btRigidBodyConstructionInfo;
 begin
   m_mass                        := mass;
   m_motionState                 := motionState;
@@ -1036,6 +1042,7 @@ begin
   m_additionalAngularDampingThresholdSqr := 0.01;
   m_additionalAngularDampingFactor       := 0.01;
   m_startWorldTransform.setIdentity;
+  result:=self;
 end;
 
 { btRigidBody }
@@ -4333,4 +4340,4 @@ begin
 end;
 
 end.
-
+

@@ -396,9 +396,12 @@ type
      m_basis:btMatrix3x3;
      m_origin:btVector3;
    public
-     procedure Init                (const q:btQuaternion;const c:btVector3);
-     procedure Init                (const b:btMatrix3x3;const c:btVector3);
-     procedure Init                (const b:btMatrix3x3);
+     function InitS                (const q:btQuaternion;const c:btVector3):btTransform;
+     function InitS                (const b:btMatrix3x3;const c:btVector3):btTransform;
+     function InitS                (const b:btMatrix3x3):btTransform;
+     function Init                (const q:btQuaternion;const c:btVector3):btTransform;
+     function Init                (const b:btMatrix3x3;const c:btVector3):btTransform;
+     function Init                (const b:btMatrix3x3):btTransform;
      procedure mult                (const t1,t2:btTransform);//inline;
      function  getRotation         :btQuaternion;
      function  opTrans             (const x:btVector3):btVector3;//inline;  // => C: operator() is transform of the vector
@@ -3284,22 +3287,40 @@ end;
 
 { btTransform }
 
-procedure btTransform.Init(const q: btQuaternion; const c: btVector3);
+function btTransform.InitS(const q: btQuaternion; const c: btVector3):btTransform;
+begin
+ result.Init(q,c);
+end;
+
+function btTransform.InitS(const b: btMatrix3x3; const c: btVector3):btTransform;
+begin
+ result.Init(b,c);
+end;
+
+function btTransform.InitS(const b: btMatrix3x3):btTransform;
+begin
+ result.Init(b);
+end;
+
+function btTransform.Init(const q: btQuaternion; const c: btVector3):btTransform;
 begin
   m_basis.Init(q);
   m_origin:=c;
+  result:=self;
 end;
 
-procedure btTransform.Init(const b: btMatrix3x3; const c: btVector3);
+function btTransform.Init(const b: btMatrix3x3; const c: btVector3):btTransform;
 begin
   m_basis  := b;
   m_origin := c;
+  result:=self;
 end;
 
-procedure btTransform.Init(const b: btMatrix3x3);
+function btTransform.Init(const b: btMatrix3x3):btTransform;
 begin
   m_basis :=  b;
   m_origin.zero;
+  result:=self;
 end;
 
 ///**@brief Set the current transform as the value of the product of two transforms
@@ -4950,4 +4971,4 @@ initialization
 finalization
 
 end.
-
+
