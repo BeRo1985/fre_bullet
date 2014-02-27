@@ -1224,7 +1224,6 @@ begin
   m_scaling.InitSame(1);
 end;
 
-var derp: Integer = 0;
 {$HINTS OFF}
 procedure btStridingMeshInterface.InternalProcessAllTriangles(const callback: btInternalTriangleIndexCallback; const aabbMin,aabbMax: btVector3);
 var numtotalphysicsverts,part,graphicssubparts,indexstride,stride,numverts,numtriangles,gfxindex:integer;
@@ -1239,9 +1238,7 @@ var numtotalphysicsverts,part,graphicssubparts,indexstride,stride,numverts,numtr
     begin
       tri_indices  := PCardinal(nativeInt(indexbase)+gfxindex*indexstride);
       graphicsbase := PSingle(nativeInt(vertexbase)+tri_indices[0]*stride);
-      inc(derp);
-      if derp=567 then
-      asm nop end;
+
       triangle[0].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
       graphicsbase := PSingle(nativeint(vertexbase)+tri_indices[1]*stride);
       triangle[1].Init(graphicsbase[0]*meshScaling.getX,graphicsbase[1]*meshScaling.getY,graphicsbase[2]*meshScaling.getZ);
