@@ -2123,7 +2123,7 @@ type
 procedure gepaMinkowskiDiff.EnableMargin(const enable: boolean);
 begin
   //
-  btAssert(false); //FOSTODO howto ?
+//  btAssert(false); //FOSTODO howto ?
   m_enableMargin := enable;
   if enable then begin
     Ls0 := @m_shapes[0].localGetSupportVertexNonVirtual; //Ls = &btConvexShape::localGetSupportVertexNonVirtual;
@@ -3636,4 +3636,4 @@ initialization
   gContactProcessedCallback:=nil;
 
 end.
-
+

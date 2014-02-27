@@ -4906,7 +4906,7 @@ begin
   end;
   //btCollisionObject* colObj = static_cast<btCollisionObject*>(m_convexProxy->m_clientObject);
   if m_convexBody.getCollisionShape.isConvex then begin
-    tm.Create(triangle[0],triangle[1],triangle[2]);
+    tm:=btTriangleShape.Create(triangle[0],triangle[1],triangle[2]);
     tm.setMargin(m_collisionMarginTriangle);
     tmpShape := ob.getCollisionShape();
     ob.internalSetTemporaryCollisionShape(tm);
@@ -4920,6 +4920,7 @@ begin
     //colAlgo->~btCollisionAlgorithm(); FOS
     ci.m_dispatcher1.freeCollisionAlgorithm(colAlgo);
     ob.internalSetTemporaryCollisionShape(tmpShape);
+    tm.Free;
   end;
 end;
 
@@ -8872,4 +8873,4 @@ end;
 //  btAssert((maxHandles > 1) and  (maxHandles < 2147483647));
 //end;
 //
-end.
+end.
